@@ -7,13 +7,11 @@ let main ~net =
   Switch.run ~name:"main" @@ fun sw ->
   (* We create the listening socket first so that we can be sure it is ready
      as soon as the client wants to use it. *)
-  let listening_socket = Eio.Net.listen net ~sw ~reuse_port: true ~reuse_addr:true ~backlog:5 addr in
+  let listening_socket = Eio.Net.listen net ~sw ~reuse_addr:true ~reuse_port:true ~backlog:5 addr in
  try
   Server.run listening_socket
- with _exn ->
+  with _exn ->
     Eio.Net.close listening_socket
-
-
 
 let () =
   Eio_main.run @@ fun env ->
