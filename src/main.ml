@@ -15,5 +15,5 @@ let main ~net =
 
 let () =
   Eio_main.run @@ fun env ->
+  Unix.sleep 2;
   main ~net:(Eio.Stdenv.net env)
-
