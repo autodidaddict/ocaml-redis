@@ -22,6 +22,7 @@ let rec handle_client flow addr =
    We can handle multiple clients at the same time.
    Never returns (but can be cancelled). *)
 let run socket =
+  traceln "Running server";
   Eio.Net.run_server socket handle_client
     (* this needs to go away next exercise *)
 (*
