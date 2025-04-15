@@ -1,4 +1,4 @@
-(lang dune 3.18)
+(lang dune 3.17)
 
 (name codecrafters_redis)
 
