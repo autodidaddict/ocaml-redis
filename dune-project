@@ -1,4 +1,4 @@
-(lang dune 3.16)
+(lang dune 3.18)
 
 (name codecrafters_redis)
 
@@ -6,6 +6,7 @@
 
 (package
  (name codecrafters_redis)
+ (depends eio_main)
  (maintainers "CodeCrafters <hello@codecrafters.io>")
  (authors "CodeCrafters <hello@codecrafters.io>")
  (synopsis "Starter code for the Build your own Redis challenge")
