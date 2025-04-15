@@ -25,11 +25,8 @@ let rec handle_client flow addr =
    Never returns (but can be cancelled). *)
 
 let run socket =
-  try
     traceln "Running server";
     Eio.Net.run_server socket handle_client
-      ~on_error:(fun exn -> Eio.Net.close socket; traceln "Error handling connection: %a" Fmt.exn exn)
+      ~on_error:(traceln "Error handling connection: %a" Fmt.exn)
       ~max_connections:1000
-  with _exn ->
-    Eio.Net.close socket;
-    traceln "foo"
+
