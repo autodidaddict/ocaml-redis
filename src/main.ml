@@ -8,13 +8,9 @@ let main ~net =
   (* We create the listening socket first so that we can be sure it is ready
      as soon as the client wants to use it. *)
   let listening_socket = Eio.Net.listen net ~sw ~reuse_addr:true ~backlog:5 addr in
-  (* Start the server running in a new fiber.
-     Using [fork_daemon] here means that it will be stopped once the client is done
-     (we don't wait for it to finish because it will keep accepting new connections forever). *)
-  Server.run listening_socket
+ Server.run listening_socket
 
 let () =
   Eio_main.run @@ fun env ->
-  Unix.sleep 2;
   main ~net:(Eio.Stdenv.net env)
 

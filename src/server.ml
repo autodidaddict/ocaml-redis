@@ -5,6 +5,8 @@ let traceln fmt = traceln ("server: " ^^ fmt)
 
 module Read = Eio.Buf_read
 
+
+
 (* Read one line from [client] and respond with "OK". *)
 let rec handle_client flow addr =
   traceln "Reading line from %a" Eio.Net.Sockaddr.pp addr;
@@ -21,12 +23,13 @@ let rec handle_client flow addr =
 (* Accept incoming client connections on [socket].
    We can handle multiple clients at the same time.
    Never returns (but can be cancelled). *)
+
 let run socket =
-  traceln "Running server";
-  Eio.Net.run_server socket handle_client
-    (* this needs to go away next exercise *)
-(*
-    ~on_error:raise
-*)
-    ~on_error:(traceln "Error handling connection: %a" Fmt.exn)
-    ~max_connections:1000
+  try
+    traceln "Running server";
+    Eio.Net.run_server socket handle_client
+      ~on_error:(traceln "Error handling connection: %a" Fmt.exn)
+      ~max_connections:1000
+  with exn ->
+    Eio.Net.close socket;
+    raise exn
