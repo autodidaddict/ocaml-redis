@@ -11,6 +11,6 @@ let () =
   listen server_socket 1;
 
   (* Uncomment this block to pass the first stage *)
-  (* let (client_socket, _) = accept server_socket in *)
-  (* close client_socket; *)
-  (* close server_socket *)
+  let (client_socket, _) = accept server_socket in 
+  close client_socket; 
+  close server_socket 
