@@ -4,6 +4,7 @@ open Eio.Std
 let traceln fmt = traceln ("server: " ^^ fmt)
 
 module Read = Eio.Buf_read
+module Write = Eio.Buf_write
 
 (* Read one line from [client] and respond with "OK". *)
 let handle_client flow addr =
@@ -11,7 +12,7 @@ let handle_client flow addr =
   (* We use a buffered reader because we may need to combine multiple reads
      to get a single line (or we may get multiple lines in a single read,
      although here we only use the first one). *)
-  let from_client = Read.of_flow flow ~max_size:1024 in
+  let from_client = Read.of_flow flow ~max_size:100 in
   let rec read_loop () =     
     try
       let line = Read.line from_client in    
