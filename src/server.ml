@@ -24,8 +24,8 @@ let rec handle_client flow addr =
 let run socket =
   Eio.Net.run_server socket handle_client
     (* this needs to go away next exercise *)
-    ~on_error:raise
 (*
-    ~on_error:(traceln "Error handling connection: %a" Fmt.exn)
+    ~on_error:raise
 *)
+    ~on_error:(traceln "Error handling connection: %a" Fmt.exn)
     ~max_connections:1000
