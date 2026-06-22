@@ -10,6 +10,7 @@ bug-reports: "https://github.com/codecrafters-io/build-your-own-redis/issues"
 depends: [
   "dune" {>= "3.17"}
   "eio_main"
+  "alcotest" {with-test}
   "odoc" {with-doc}
 ]
 build: [

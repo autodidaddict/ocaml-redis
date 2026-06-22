@@ -8,16 +8,8 @@ let () =
   let socket =
     Eio.Net.listen (Eio.Stdenv.net env) ~sw ~reuse_addr:true ~backlog:128 addr
   in
-  (* Graceful shutdown on SIGTERM/SIGINT.
-
-     The signal handler only calls [Eio.Condition.broadcast], which Eio
-     documents as lock-free and safe to run from a signal handler. A normal
-     daemon fiber then resolves [stop], keeping the not-signal-safe
-     [Promise.resolve] out of signal context. Resolving [stop] makes
-     [run_server] stop accepting and lets the switch close the listening socket
-     promptly - rather than leaving it to the io_uring backend's slower
-     shutdown, during which the listener keeps completing handshakes for
-     connections it will never serve (which breaks rapid restarts). *)
+    (* See https://kevinhoffman.blog/posts/debug-io-uring-codecrafters-analysis/ for info on 
+       the use of eio and the need for the graceful shutdown *)
   let shutdown = Eio.Condition.create () in
   let signalled = Atomic.make false in
   let on_signal _ =

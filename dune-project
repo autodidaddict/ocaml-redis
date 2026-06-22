@@ -6,7 +6,9 @@
 
 (package
  (name codecrafters_redis)
- (depends eio_main)
+ (depends
+   eio_main
+   (alcotest :with-test))
  (maintainers "CodeCrafters <hello@codecrafters.io>")
  (authors "CodeCrafters <hello@codecrafters.io>")
  (synopsis "Starter code for the Build your own Redis challenge")

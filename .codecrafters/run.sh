@@ -8,4 +8,4 @@
 
 set -e # Exit on failure
 
-exec /tmp/codecrafters-build-redis-ocaml/default/main.exe "$@"
+exec /tmp/codecrafters-build-redis-ocaml/default/src/main.exe "$@"

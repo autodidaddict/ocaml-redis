@@ -1,0 +1,3 @@
+(tests
+ (names parser_test encoder_test)
+ (libraries resp alcotest))
