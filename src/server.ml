@@ -36,14 +36,3 @@ let handle_client flow addr =
     in
       read_loop()
 
-
-(* Accept incoming client connections on [socket].
-   We can handle multiple clients at the same time.
-   Never returns (but can be cancelled). *)
-
-let run socket =
-    traceln "Running server";
-    Eio.Net.run_server socket handle_client
-    ~on_error:(traceln "Error handling connection: %a" Fmt.exn)
-      ~max_connections:1000
-
