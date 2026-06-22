@@ -1,38 +1,34 @@
 open Eio.Std
+open Resp
 
 (* Prefix all trace output with "server: " *)
 let traceln fmt = traceln ("server: " ^^ fmt)
 
-module Read = Eio.Buf_read
-module Write = Eio.Buf_write
+module R = Eio.Buf_read
 
-(* Read one line from [client] and respond with "OK". *)
+(* Turn a parsed client command into its reply value. Clients send commands as
+   RESP arrays of bulk strings, e.g. PING is *1\r\n$4\r\nPING\r\n. *)
+let reply_to (command : Value.t) : Value.t =
+  let open Value in
+  match command with
+  | Array (Bulk_string (Some name) :: _) when String.uppercase_ascii name = "PING" ->
+    Simple_string "PONG"
+  | _ -> Simple_error "ERR unknown command"
+
+(* Parse RESP values straight from the connection's buffered reader and reply to
+   each. Buf_read buffers bytes across socket reads, so a command split over
+   several packets just makes [Parser.value] read again — no manual buffering. *)
 let handle_client flow addr =
-  traceln "Reading line from %a" Eio.Net.Sockaddr.pp addr;
-  (* We use a buffered reader because we may need to combine multiple reads
-     to get a single line (or we may get multiple lines in a single read,
-     although here we only use the first one). *)
-  let from_client = Read.of_flow flow ~max_size:100 in
-  let rec read_loop () =     
-    try
-      let line = Read.line from_client in    
-      let linestr = Printf.sprintf "%S" line in
-      
-      traceln "Received: '%s'" linestr;
-      if linestr = "\"PING\"" then
-        Eio.Flow.copy_string "+PONG\r\n" flow
-      else
-        traceln "not a ping";
-      
-        
-      read_loop ()
-    with
-    | End_of_file -> 
-        traceln "client closed connection.";
-        Eio.Flow.close flow
-    | exn ->
-        traceln "Error handling client: %a" Fmt.exn exn;
-        Eio.Flow.close flow
-    in
-      read_loop()
-
+  traceln "client connected: %a" Eio.Net.Sockaddr.pp addr;
+  let from_client = R.of_flow flow ~max_size:(1024 * 1024) in
+  let rec loop () =
+    if R.at_end_of_input from_client then traceln "client closed connection."
+    else begin
+      let reply = Encoder.encode (reply_to (Parser.value from_client)) in
+      Eio.Flow.copy_string reply flow;
+      loop ()
+    end
+  in
+  try loop () with
+  | End_of_file -> traceln "client closed connection."
+  | Failure msg -> traceln "protocol error, closing: %s" msg

@@ -58,26 +58,3 @@ let rec value_pp (fmt : Format.formatter) (v : Value.t) : unit =
   | Big_number s -> Format.fprintf fmt "Big_number %S" s
 
 let value : Value.t Alcotest.testable = Alcotest.testable value_pp value_equal
-
-(* [outcome] equality is message-insensitive for failures: the tests assert that
-   a parse failed, not the exact diagnostic wording. *)
-let outcome_equal (a : Parser.outcome) (b : Parser.outcome) : bool =
-  match (a, b) with
-  | Parser.Done (v1, r1), Parser.Done (v2, r2) ->
-    value_equal v1 v2 && String.equal r1 r2
-  | Parser.Incomplete, Parser.Incomplete -> true
-  | Parser.Failed _, Parser.Failed _ -> true
-  | _ -> false
-
-let outcome_pp (fmt : Format.formatter) (o : Parser.outcome) : unit =
-  match o with
-  | Parser.Done (v, rest) -> Format.fprintf fmt "Done (%a, %S)" value_pp v rest
-  | Parser.Incomplete -> Format.fprintf fmt "Incomplete"
-  | Parser.Failed (Parser.Parse_error msg) ->
-    Format.fprintf fmt "Failed (Parse_error %S)" msg
-
-let outcome : Parser.outcome Alcotest.testable =
-  Alcotest.testable outcome_pp outcome_equal
-
-(* A failed outcome; its message is ignored by [outcome] equality. *)
-let failed : Parser.outcome = Parser.Failed (Parser.Parse_error "")

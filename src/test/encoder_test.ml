@@ -28,9 +28,8 @@ let test_array () =
 (* Encoder and parser are inverses (for the types the parser understands). *)
 let test_roundtrip_bulk () =
   let value = Value.Bulk_string (Some "hello") in
-  Alcotest.check Testables.outcome "encode -> parse round-trips"
-    (Parser.Done (value, ""))
-    (Parser.parse (Encoder.encode value))
+  Alcotest.check Testables.value "encode -> parse round-trips" value
+    (Parser.value (Eio.Buf_read.of_string (Encoder.encode value)))
 
 let () =
   Alcotest.run "resp-encoder"

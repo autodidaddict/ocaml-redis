@@ -8,6 +8,7 @@
  (name codecrafters_redis)
  (depends
    eio_main
+   eio
    (alcotest :with-test))
  (maintainers "CodeCrafters <hello@codecrafters.io>")
  (authors "CodeCrafters <hello@codecrafters.io>")

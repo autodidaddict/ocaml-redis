@@ -1,65 +1,60 @@
 open Resp
+module R = Eio.Buf_read
 
-(* Behavioral tests through the public surface (parse / feed), now asserting with
-   testables so a mismatch prints a structured expected-vs-actual diff. *)
-
-let check_outcome msg expected actual =
-  Alcotest.check Testables.outcome msg expected actual
-
-let check_values msg expected actual =
-  Alcotest.(check (list Testables.value)) msg expected actual
-
-let test_rejects_unknown_type () =
-  check_outcome "unknown type byte fails" Testables.failed (Parser.parse "+OK\r\n")
-
-let test_incomplete_without_type () =
-  check_outcome "empty buffer is incomplete" Parser.Incomplete (Parser.parse "")
-
-let test_incomplete_partial_body () =
-  check_outcome "partial body is incomplete" Parser.Incomplete
-    (Parser.parse "$5\r\nhe")
-
-let test_empty_bulk_string () =
-  check_outcome "empty bulk string"
-    (Parser.Done (Value.Bulk_string (Some ""), ""))
-    (Parser.parse "$0\r\n\r\n")
+(* Drive the parser over a Buf_read built from a string: no socket needed, and
+   the same combinators the server uses. *)
+let value = Testables.value
+let parse s = Parser.value (R.of_string s)
 
 let test_bulk_string () =
-  check_outcome "bulk string"
-    (Parser.Done (Value.Bulk_string (Some "hello"), ""))
-    (Parser.parse "$5\r\nhello\r\n")
+  Alcotest.check value "bulk string"
+    (Value.Bulk_string (Some "hello"))
+    (parse "$5\r\nhello\r\n")
 
-let test_feed_resumes_across_chunks () =
-  match Parser.feed (Parser.create ()) "$5\r\nhe" with
-  | Error _ -> Alcotest.fail "first feed errored"
-  | Ok (values, waiting) -> (
-    check_values "nothing complete after a partial frame" [] values;
-    match Parser.feed waiting "llo\r\n" with
-    | Error _ -> Alcotest.fail "second feed errored"
-    | Ok (values', _) ->
-      check_values "hello completes once the rest arrives"
-        [ Value.Bulk_string (Some "hello") ]
-        values')
+let test_empty_bulk_string () =
+  Alcotest.check value "empty bulk string"
+    (Value.Bulk_string (Some ""))
+    (parse "$0\r\n\r\n")
 
-let test_feed_drains_pipeline () =
-  match Parser.feed (Parser.create ()) "$1\r\na\r\n$1\r\nb\r\n" with
-  | Error _ -> Alcotest.fail "feed errored"
-  | Ok (values, _) ->
-    check_values "both pipelined values"
-      [ Value.Bulk_string (Some "a"); Value.Bulk_string (Some "b") ]
-      values
+let test_ping_array () =
+  (* how a real PING arrives on the wire *)
+  Alcotest.check value "PING command array"
+    (Value.Array [ Value.Bulk_string (Some "PING") ])
+    (parse "*1\r\n$4\r\nPING\r\n")
+
+let test_echo_array () =
+  Alcotest.check value "ECHO command array"
+    (Value.Array [ Value.Bulk_string (Some "ECHO"); Value.Bulk_string (Some "hey") ])
+    (parse "*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n")
+
+let test_unknown_type_fails () =
+  match parse "+OK\r\n" with
+  | exception Failure _ -> ()
+  | _ -> Alcotest.fail "expected a failure on an unknown type byte"
+
+let test_incomplete_raises () =
+  (* an array promising two elements but carrying one runs off the end *)
+  match parse "*2\r\n$4\r\nECHO\r\n" with
+  | exception End_of_file -> ()
+  | _ -> Alcotest.fail "expected End_of_file on incomplete input"
+
+let test_pipeline () =
+  (* two values share one buffer; the second parse resumes where the first left off *)
+  let r = R.of_string "$1\r\na\r\n$1\r\nb\r\n" in
+  let first = Parser.value r in
+  let second = Parser.value r in
+  Alcotest.check value "first" (Value.Bulk_string (Some "a")) first;
+  Alcotest.check value "second" (Value.Bulk_string (Some "b")) second
 
 let () =
   Alcotest.run "resp"
-    [ ( "parse"
-      , [ Alcotest.test_case "rejects unknown type" `Quick test_rejects_unknown_type
-        ; Alcotest.test_case "incomplete without type" `Quick test_incomplete_without_type
-        ; Alcotest.test_case "incomplete partial body" `Quick test_incomplete_partial_body
+    [ ( "value"
+      , [ Alcotest.test_case "bulk string" `Quick test_bulk_string
         ; Alcotest.test_case "empty bulk string" `Quick test_empty_bulk_string
-        ; Alcotest.test_case "bulk string" `Quick test_bulk_string
-        ] )
-    ; ( "feed"
-      , [ Alcotest.test_case "resumes across chunks" `Quick test_feed_resumes_across_chunks
-        ; Alcotest.test_case "drains a pipeline" `Quick test_feed_drains_pipeline
+        ; Alcotest.test_case "ping array" `Quick test_ping_array
+        ; Alcotest.test_case "echo array" `Quick test_echo_array
+        ; Alcotest.test_case "unknown type fails" `Quick test_unknown_type_fails
+        ; Alcotest.test_case "incomplete raises" `Quick test_incomplete_raises
+        ; Alcotest.test_case "pipeline" `Quick test_pipeline
         ] )
     ]

@@ -1,2 +1,3 @@
 (library
- (name resp))
+ (name resp)
+ (libraries eio))
