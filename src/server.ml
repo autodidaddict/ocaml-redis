@@ -12,7 +12,7 @@ let reply_to (value : Value.t) : Value.t =
   let open Value in
   match Command.of_value value with
   | Ok Ping -> Simple_string "PONG"
-  | Ok (Echo _) -> Simple_error "ERR ECHO not implemented yet" (* next step *)
+  | Ok (Echo msg) -> Bulk_string (Some msg)
   | Error msg -> Simple_error ("ERR " ^ msg)
 
 (* Parse RESP values straight from the connection's buffered reader and reply to

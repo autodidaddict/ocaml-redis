@@ -11,8 +11,10 @@ type t =
     error if it is not a command this server understands. *)
 let of_value (value : Value.t) : (t, string) result =
   match value with
-  | Array (Bulk_string (Some name) :: _args) -> (
-    match String.uppercase_ascii name with
-    | "PING" -> Ok Ping
-    | other -> Error (Printf.sprintf "unknown command '%s'" other))
+  | Array (Bulk_string (Some name) :: args) -> (
+    match (String.uppercase_ascii name, args) with
+    | "PING", _ -> Ok Ping
+    | "ECHO", [ Bulk_string (Some msg) ] -> Ok (Echo msg)
+    | "ECHO", _ -> Error "ECHO expects one argument"
+    | other, _ -> Error (Printf.sprintf "unknown command '%s'" other))
   | _ -> Error "expected a non-empty array of bulk strings"
