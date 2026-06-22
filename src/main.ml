@@ -8,22 +8,31 @@ let () =
   let socket =
     Eio.Net.listen (Eio.Stdenv.net env) ~sw ~reuse_addr:true ~backlog:128 addr
   in
-    (* See https://kevinhoffman.blog/posts/debug-io-uring-codecrafters-analysis/ for info on 
-       the use of eio and the need for the graceful shutdown *)
+    (* See https://kevinhoffman.blog/posts/debug-io-uring-codecrafters-analysis/ for
+       background on the eio setup and signal-safe shutdown.
+
+       The signal handler stays signal-safe by only toggling an atomic and calling
+       [Eio.Condition.broadcast] (unlike [Promise.resolve], broadcast is safe to
+       call from a handler). A fiber waits on the condition for that broadcast.
+
+       When it fires we cancel the server fiber via [Fiber.first] rather than use
+       [run_server ~stop]: ~stop is graceful and waits for in-flight connections
+       to finish, but our handlers block on clients that stay connected, so it
+       would never return. Cancelling the server fiber also cancels the connection
+       fibers, so the program exits promptly. *)
   let shutdown = Eio.Condition.create () in
   let signalled = Atomic.make false in
-  let on_signal _ =
+  let on_signal (_ : int) =
     Atomic.set signalled true;
     Eio.Condition.broadcast shutdown
   in
   Sys.set_signal Sys.sigterm (Signal_handle on_signal);
   Sys.set_signal Sys.sigint (Signal_handle on_signal);
-  let stop, set_stop = Promise.create () in
-  Fiber.fork_daemon ~sw (fun () ->
+  Fiber.first
+    (fun () ->
       Eio.Condition.loop_no_mutex shutdown (fun () ->
-          if Atomic.get signalled then Some () else None);
-      Promise.resolve set_stop ();
-      `Stop_daemon);
-  Eio.Net.run_server ~stop socket Server.handle_client
-    ~on_error:(fun ex -> traceln "connection error: %a" Fmt.exn ex)
-    ~max_connections:1000
+          if Atomic.get signalled then Some () else None))
+    (fun () ->
+      Eio.Net.run_server socket Server.handle_client
+        ~on_error:(fun ex -> traceln "connection error: %a" Fmt.exn ex)
+        ~max_connections:1000)
