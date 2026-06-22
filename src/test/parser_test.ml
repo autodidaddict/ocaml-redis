@@ -1,47 +1,53 @@
 open Resp
 
-(* Behavioral tests: the parser is exercised only through its public surface
-   (parse / feed), asserting on observable outcomes rather than internal state. *)
+(* Behavioral tests through the public surface (parse / feed), now asserting with
+   testables so a mismatch prints a structured expected-vs-actual diff. *)
+
+let check_outcome msg expected actual =
+  Alcotest.check Testables.outcome msg expected actual
+
+let check_values msg expected actual =
+  Alcotest.(check (list Testables.value)) msg expected actual
 
 let test_rejects_unknown_type () =
-  match Parser.parse "+OK\r\n" with
-  | Parser.Failed _ -> ()
-  | _ -> Alcotest.fail "expected an error for an unknown type byte"
+  check_outcome "unknown type byte fails" Testables.failed (Parser.parse "+OK\r\n")
 
 let test_incomplete_without_type () =
-  match Parser.parse "" with
-  | Parser.Incomplete -> ()
-  | _ -> Alcotest.fail "empty buffer should be incomplete"
+  check_outcome "empty buffer is incomplete" Parser.Incomplete (Parser.parse "")
 
 let test_incomplete_partial_body () =
-  (* '$5' promises 5 body bytes; only 2 are present -> waiting for more *)
-  match Parser.parse "$5\r\nhe" with
-  | Parser.Incomplete -> ()
-  | _ -> Alcotest.fail "partial body should be incomplete"
+  check_outcome "partial body is incomplete" Parser.Incomplete
+    (Parser.parse "$5\r\nhe")
 
 let test_empty_bulk_string () =
-  match Parser.parse "$0\r\n\r\n" with
-  | Parser.Done (Value.Bulk_string (Some ""), "") -> ()
-  | _ -> Alcotest.fail "expected an empty bulk string with no remainder"
+  check_outcome "empty bulk string"
+    (Parser.Done (Value.Bulk_string (Some ""), ""))
+    (Parser.parse "$0\r\n\r\n")
 
 let test_bulk_string () =
-  match Parser.parse "$5\r\nhello\r\n" with
-  | Parser.Done (Value.Bulk_string (Some "hello"), "") -> ()
-  | _ -> Alcotest.fail "expected \"hello\" with no remainder"
+  check_outcome "bulk string"
+    (Parser.Done (Value.Bulk_string (Some "hello"), ""))
+    (Parser.parse "$5\r\nhello\r\n")
 
 let test_feed_resumes_across_chunks () =
   match Parser.feed (Parser.create ()) "$5\r\nhe" with
-  | Ok ([], waiting) -> (
+  | Error _ -> Alcotest.fail "first feed errored"
+  | Ok (values, waiting) -> (
+    check_values "nothing complete after a partial frame" [] values;
     match Parser.feed waiting "llo\r\n" with
-    | Ok ([ Value.Bulk_string (Some "hello") ], _) -> ()
-    | _ -> Alcotest.fail "expected \"hello\" after the second feed")
-  | _ -> Alcotest.fail "expected to be waiting for input after the first feed"
+    | Error _ -> Alcotest.fail "second feed errored"
+    | Ok (values', _) ->
+      check_values "hello completes once the rest arrives"
+        [ Value.Bulk_string (Some "hello") ]
+        values')
 
 let test_feed_drains_pipeline () =
-  (* two complete values arriving in one chunk *)
   match Parser.feed (Parser.create ()) "$1\r\na\r\n$1\r\nb\r\n" with
-  | Ok ([ Value.Bulk_string (Some "a"); Value.Bulk_string (Some "b") ], _) -> ()
-  | _ -> Alcotest.fail "expected both pipelined values"
+  | Error _ -> Alcotest.fail "feed errored"
+  | Ok (values, _) ->
+    check_values "both pipelined values"
+      [ Value.Bulk_string (Some "a"); Value.Bulk_string (Some "b") ]
+      values
 
 let () =
   Alcotest.run "resp"
