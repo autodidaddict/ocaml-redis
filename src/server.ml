@@ -6,14 +6,14 @@ let traceln fmt = traceln ("server: " ^^ fmt)
 
 module R = Eio.Buf_read
 
-(* Turn a parsed client command into its reply value. Clients send commands as
-   RESP arrays of bulk strings, e.g. PING is *1\r\n$4\r\nPING\r\n. *)
-let reply_to (command : Value.t) : Value.t =
+(* Turn a parsed RESP value into a reply value by interpreting it as a typed
+   command and dispatching on it. *)
+let reply_to (value : Value.t) : Value.t =
   let open Value in
-  match command with
-  | Array (Bulk_string (Some name) :: _) when String.uppercase_ascii name = "PING" ->
-    Simple_string "PONG"
-  | _ -> Simple_error "ERR unknown command"
+  match Command.of_value value with
+  | Ok Ping -> Simple_string "PONG"
+  | Ok (Echo _) -> Simple_error "ERR ECHO not implemented yet" (* next step *)
+  | Error msg -> Simple_error ("ERR " ^ msg)
 
 (* Parse RESP values straight from the connection's buffered reader and reply to
    each. Buf_read buffers bytes across socket reads, so a command split over

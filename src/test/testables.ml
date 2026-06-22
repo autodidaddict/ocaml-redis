@@ -58,3 +58,17 @@ let rec value_pp (fmt : Format.formatter) (v : Value.t) : unit =
   | Big_number s -> Format.fprintf fmt "Big_number %S" s
 
 let value : Value.t Alcotest.testable = Alcotest.testable value_pp value_equal
+
+let command_equal (a : Command.t) (b : Command.t) : bool =
+  match (a, b) with
+  | Command.Ping, Command.Ping -> true
+  | Command.Echo x, Command.Echo y -> String.equal x y
+  | _ -> false
+
+let command_pp (fmt : Format.formatter) (c : Command.t) : unit =
+  match c with
+  | Command.Ping -> Format.fprintf fmt "Ping"
+  | Command.Echo s -> Format.fprintf fmt "Echo %S" s
+
+let command : Command.t Alcotest.testable =
+  Alcotest.testable command_pp command_equal
