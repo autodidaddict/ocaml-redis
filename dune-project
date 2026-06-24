@@ -9,6 +9,7 @@
  (depends
    eio_main
    eio
+   cmdliner
    (alcotest :with-test))
  (maintainers "CodeCrafters <hello@codecrafters.io>")
  (authors "CodeCrafters <hello@codecrafters.io>")

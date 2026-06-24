@@ -56,7 +56,8 @@ let apply_set ~(now_millis : int) ~(store : Store.t)
    [now_millis], producing the reply value. Pure with respect to I/O: it takes
    the time as a plain value and the store as a capability, so tests drive it
    directly with no socket and no real clock. *)
-let reply_to ~(now_millis : int) ~(store : Store.t) (value : Value.t) : Value.t =
+let reply_to ~(now_millis : int) ~(store : Store.t) ~(config : Config.t)
+    (value : Value.t) : Value.t =
   let open Value in
   match Command.of_value value with
   | Ok Ping -> Simple_string "PONG"
@@ -66,6 +67,13 @@ let reply_to ~(now_millis : int) ~(store : Store.t) (value : Value.t) : Value.t 
       | Some v -> Bulk_string (Some v)
       | None -> nil)
   | Ok (Set opts) -> apply_set ~now_millis ~store opts
+  | Ok (Config_get param) -> (
+      (* CONFIG GET replies with a flat [name; value] array, echoing the
+         canonical parameter name (not the client's casing) exactly as real
+         Redis does; an unknown parameter yields an empty array. *)
+      match Config.get config param with
+      | Some (name, v) -> Array [ Bulk_string (Some name); Bulk_string (Some v) ]
+      | None -> Array [])
   | Error msg -> Simple_error ("ERR " ^ msg)
 
 (* Parse RESP values straight from the connection's buffered reader and reply to
@@ -73,7 +81,7 @@ let reply_to ~(now_millis : int) ~(store : Store.t) (value : Value.t) : Value.t 
    to stamp each command's execution time, the store to read and write keys.
    Buf_read buffers across socket reads, so a command split over several packets
    just makes [Parser.value] read again. *)
-let handle_client ~clock ~store flow addr =
+let handle_client ~clock ~store ~config flow addr =
   traceln "client connected: %a" Eio.Net.Sockaddr.pp addr;
   let from_client = R.of_flow flow ~max_size:(1024 * 1024) in
   let rec loop () =
@@ -85,7 +93,7 @@ let handle_client ~clock ~store flow addr =
          server speaks integer time. *)
       let command = Parser.value from_client in
       let now_millis = int_of_float (Eio.Time.now clock *. 1000.) in
-      let reply = Encoder.encode (reply_to ~now_millis ~store command) in
+      let reply = Encoder.encode (reply_to ~now_millis ~store ~config command) in
       Eio.Flow.copy_string reply flow;
       loop ()
     end

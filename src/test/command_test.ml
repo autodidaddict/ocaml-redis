@@ -89,6 +89,20 @@ let test_set_requires_key_and_value () =
   | Error _ -> ()
   | Ok _ -> Alcotest.fail "expected SET with no value to error"
 
+let test_detects_config_get () =
+  Alcotest.check result "CONFIG GET dir" (Ok (Command.Config_get "dir"))
+    (Command.of_value (cmd [ "CONFIG"; "GET"; "dir" ]))
+
+let test_config_get_is_case_insensitive () =
+  Alcotest.check result "config get dbfilename"
+    (Ok (Command.Config_get "dbfilename"))
+    (Command.of_value (cmd [ "config"; "get"; "dbfilename" ]))
+
+let test_config_unknown_subcommand_errors () =
+  match Command.of_value (cmd [ "CONFIG"; "RESETSTAT" ]) with
+  | Error _ -> ()
+  | Ok _ -> Alcotest.fail "expected unsupported CONFIG subcommand to error"
+
 let () =
   Alcotest.run "resp-command"
     [ ( "of_value"
@@ -107,5 +121,8 @@ let () =
         ; Alcotest.test_case "set duplicate expiry errors" `Quick test_set_duplicate_expiry_errors
         ; Alcotest.test_case "set invalid expire errors" `Quick test_set_invalid_expire_errors
         ; Alcotest.test_case "set requires key and value" `Quick test_set_requires_key_and_value
+        ; Alcotest.test_case "detects config get" `Quick test_detects_config_get
+        ; Alcotest.test_case "config get is case-insensitive" `Quick test_config_get_is_case_insensitive
+        ; Alcotest.test_case "config unknown subcommand errors" `Quick test_config_unknown_subcommand_errors
         ] )
     ]

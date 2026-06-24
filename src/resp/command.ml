@@ -29,7 +29,12 @@ type set_options = {
     [*1\r\n$4\r\nPING\r\n]. {!of_value} turns that wire shape into a typed
     command so dispatch can match on [Ping] / [Echo] rather than on array
     structure. *)
-type t = Ping | Echo of string | Get of string | Set of set_options
+type t =
+  | Ping
+  | Echo of string
+  | Get of string
+  | Set of set_options
+  | Config_get of string  (** CONFIG GET <parameter> *)
 
 (* A positive integer expiry argument, or None if it isn't one. Redis rejects
    zero and negatives, so we enforce that here at the wire boundary. *)
@@ -101,5 +106,9 @@ let of_value (value : Value.t) : (t, string) result =
       | "SET", Bulk_string (Some key) :: Bulk_string (Some value) :: opts ->
           parse_set key value opts
       | "SET", _ -> Error "SET expects at least a key and a value"
+      | "CONFIG", [ Bulk_string (Some sub); Bulk_string (Some param) ]
+        when String.uppercase_ascii sub = "GET" ->
+          Ok (Config_get param)
+      | "CONFIG", _ -> Error "CONFIG only supports GET <parameter>"
       | other, _ -> Error (Printf.sprintf "unknown command '%s'" other))
   | _ -> Error "expected a non-empty array of bulk strings"

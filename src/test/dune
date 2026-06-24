@@ -1,3 +1,3 @@
 (tests
- (names parser_test encoder_test command_test store_test)
- (libraries resp alcotest eio store))
+ (names parser_test encoder_test command_test store_test config_test)
+ (libraries resp alcotest eio store config))

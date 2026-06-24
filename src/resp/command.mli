@@ -29,7 +29,12 @@ type set_options = {
     [*1\r\n$4\r\nPING\r\n]. {!of_value} turns that wire shape into a typed
     command so dispatch can match on [Ping] / [Echo] rather than on array
     structure. *)
-type t = Ping | Echo of string | Get of string | Set of set_options
+type t =
+  | Ping
+  | Echo of string
+  | Get of string
+  | Set of set_options
+  | Config_get of string  (** CONFIG GET <parameter> *)
 
 val of_value : Value.t -> (t, string) result
 (** [of_value v] interprets [v] (a RESP array of bulk strings) as a command, or
