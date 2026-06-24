@@ -1,5 +1,5 @@
 (** Serialisation of {!Value.t} to the RESP wire format — the inverse of
-    {!Parser.parse}. Pure and I/O-free, so it can be unit tested directly. *)
+    {!Parser.value}. Pure and I/O-free, so it can be unit tested directly. *)
 
 let rec encode (value : Value.t) : string =
   match value with

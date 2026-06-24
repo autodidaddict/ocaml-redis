@@ -8,6 +8,8 @@ let () =
   let socket =
     Eio.Net.listen (Eio.Stdenv.net env) ~sw ~reuse_addr:true ~backlog:128 addr
   in
+  let clock = Eio.Stdenv.clock env in
+  let store = Store.create () in
     (* See https://kevinhoffman.blog/posts/debug-io-uring-codecrafters-analysis/ for
        background on the eio setup and signal-safe shutdown.
 
@@ -33,6 +35,6 @@ let () =
       Eio.Condition.loop_no_mutex shutdown (fun () ->
           if Atomic.get signalled then Some () else None))
     (fun () ->
-      Eio.Net.run_server socket Server.handle_client
+      Eio.Net.run_server socket (Server.handle_client ~clock ~store)
         ~on_error:(fun ex -> traceln "connection error: %a" Fmt.exn ex)
         ~max_connections:1000)

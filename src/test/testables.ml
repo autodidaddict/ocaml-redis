@@ -63,12 +63,37 @@ let command_equal (a : Command.t) (b : Command.t) : bool =
   match (a, b) with
   | Command.Ping, Command.Ping -> true
   | Command.Echo x, Command.Echo y -> String.equal x y
+  | Command.Get x, Command.Get y -> String.equal x y
+  (* set_options is a flat record of structurally-comparable scalars (no floats,
+     functions, or abstract types), so polymorphic [=] is correct here. *)
+  | Command.Set x, Command.Set y -> x = y
   | _ -> false
+
+let existence_to_string : Command.existence -> string = function
+  | Command.Always -> "Always"
+  | Command.If_not_exists -> "If_not_exists"
+  | Command.If_exists -> "If_exists"
+
+let expiry_to_string : Command.expiry option -> string = function
+  | None -> "None"
+  | Some (Command.Expire_seconds n) -> Printf.sprintf "Some (Expire_seconds %d)" n
+  | Some (Command.Expire_millis n) -> Printf.sprintf "Some (Expire_millis %d)" n
+  | Some (Command.Expire_at_seconds n) ->
+    Printf.sprintf "Some (Expire_at_seconds %d)" n
+  | Some (Command.Expire_at_millis n) ->
+    Printf.sprintf "Some (Expire_at_millis %d)" n
+  | Some Command.Keep_ttl -> "Some Keep_ttl"
 
 let command_pp (fmt : Format.formatter) (c : Command.t) : unit =
   match c with
   | Command.Ping -> Format.fprintf fmt "Ping"
   | Command.Echo s -> Format.fprintf fmt "Echo %S" s
+  | Command.Get key -> Format.fprintf fmt "Get %S" key
+  | Command.Set { key; value; existence; get; expiry } ->
+    Format.fprintf fmt "Set {key=%S; value=%S; existence=%s; get=%b; expiry=%s}"
+      key value
+      (existence_to_string existence)
+      get (expiry_to_string expiry)
 
 let command : Command.t Alcotest.testable =
   Alcotest.testable command_pp command_equal
