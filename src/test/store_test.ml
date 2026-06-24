@@ -1,41 +1,41 @@
-(* Because the store takes the current time as a plain [float] rather than a
-   clock capability, these tests never touch Eio or a real clock — they just
-   hand it whatever "now" the case needs. *)
+(* Because the store takes the current time as a plain [int] of milliseconds
+   rather than a clock capability, these tests never touch Eio or a real clock —
+   they just hand it whatever "now" the case needs. *)
 
 let value = Alcotest.(option string)
 
 let test_set_then_get () =
   let s = Store.create () in
   Store.set s "k" "v";
-  Alcotest.check value "present" (Some "v") (Store.get s ~now:0. "k")
+  Alcotest.check value "present" (Some "v") (Store.get s ~now_millis:0 "k")
 
 let test_missing_key () =
   let s = Store.create () in
-  Alcotest.check value "absent" None (Store.get s ~now:0. "missing")
+  Alcotest.check value "absent" None (Store.get s ~now_millis:0 "missing")
 
 let test_overwrite_replaces () =
   let s = Store.create () in
   Store.set s "k" "v1";
   Store.set s "k" "v2";
-  Alcotest.check value "latest wins" (Some "v2") (Store.get s ~now:0. "k")
+  Alcotest.check value "latest wins" (Some "v2") (Store.get s ~now_millis:0 "k")
 
 let test_live_before_deadline () =
   let s = Store.create () in
-  Store.set s ~expires_at:100. "k" "v";
-  Alcotest.check value "still live" (Some "v") (Store.get s ~now:50. "k")
+  Store.set s ~expires_at_millis:100 "k" "v";
+  Alcotest.check value "still live" (Some "v") (Store.get s ~now_millis:50 "k")
 
 let test_gone_at_or_after_deadline () =
   let s = Store.create () in
-  Store.set s ~expires_at:100. "k" "v";
-  Alcotest.check value "expired" None (Store.get s ~now:150. "k")
+  Store.set s ~expires_at_millis:100 "k" "v";
+  Alcotest.check value "expired" None (Store.get s ~now_millis:150 "k")
 
 let test_expiry_is_a_lazy_drop () =
   (* A read past the deadline doesn't just report absence, it removes the entry,
      so a later read — even with an earlier clock — still sees nothing. *)
   let s = Store.create () in
-  Store.set s ~expires_at:100. "k" "v";
-  ignore (Store.get s ~now:150. "k");
-  Alcotest.check value "actually removed" None (Store.get s ~now:0. "k")
+  Store.set s ~expires_at_millis:100 "k" "v";
+  ignore (Store.get s ~now_millis:150 "k");
+  Alcotest.check value "actually removed" None (Store.get s ~now_millis:0 "k")
 
 let () =
   Alcotest.run "store"
