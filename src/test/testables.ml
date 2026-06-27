@@ -99,3 +99,17 @@ let command_pp (fmt : Format.formatter) (c : Command.t) : unit =
 
 let command : Command.t Alcotest.testable =
   Alcotest.testable command_pp command_equal
+
+let rdb_entry : Rdb.entry Alcotest.testable =
+  let pp fmt (e : Rdb.entry) =
+    Format.fprintf fmt "{key=%S; value=%S; expires_at_millis=%s}" e.key e.value
+      (match e.expires_at_millis with
+      | None -> "None"
+      | Some n -> Printf.sprintf "Some %d" n)
+  in
+  let equal (a : Rdb.entry) (b : Rdb.entry) =
+    String.equal a.key b.key
+    && String.equal a.value b.value
+    && Option.equal Int.equal a.expires_at_millis b.expires_at_millis
+  in
+  Alcotest.testable pp equal

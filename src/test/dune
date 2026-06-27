@@ -1,3 +1,5 @@
 (tests
- (names parser_test encoder_test command_test store_test config_test)
- (libraries resp alcotest eio store config))
+ (names parser_test encoder_test command_test store_test config_test rdb_test
+        rdb_fixture_test)
+ (libraries resp alcotest eio store config rdb)
+ (deps fixtures/dump.rdb))
