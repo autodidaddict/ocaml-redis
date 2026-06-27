@@ -103,6 +103,15 @@ let test_config_unknown_subcommand_errors () =
   | Error _ -> ()
   | Ok _ -> Alcotest.fail "expected unsupported CONFIG subcommand to error"
 
+let test_detects_keys () =
+  Alcotest.check result "KEYS *" (Ok (Command.Keys "*"))
+    (Command.of_value (cmd [ "KEYS"; "*" ]))
+
+let test_keys_requires_a_pattern () =
+  match Command.of_value (cmd [ "KEYS" ]) with
+  | Error _ -> ()
+  | Ok _ -> Alcotest.fail "expected KEYS with no pattern to error"
+
 let () =
   Alcotest.run "resp-command"
     [ ( "of_value"
@@ -124,5 +133,7 @@ let () =
         ; Alcotest.test_case "detects config get" `Quick test_detects_config_get
         ; Alcotest.test_case "config get is case-insensitive" `Quick test_config_get_is_case_insensitive
         ; Alcotest.test_case "config unknown subcommand errors" `Quick test_config_unknown_subcommand_errors
+        ; Alcotest.test_case "detects keys" `Quick test_detects_keys
+        ; Alcotest.test_case "keys requires a pattern" `Quick test_keys_requires_a_pattern
         ] )
     ]

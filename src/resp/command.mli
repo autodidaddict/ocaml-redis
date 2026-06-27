@@ -35,6 +35,7 @@ type t =
   | Get of string
   | Set of set_options
   | Config_get of string  (** CONFIG GET <parameter> *)
+  | Keys of string  (** KEYS <pattern> *)
 
 val of_value : Value.t -> (t, string) result
 (** [of_value v] interprets [v] (a RESP array of bulk strings) as a command, or

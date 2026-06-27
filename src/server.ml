@@ -74,6 +74,11 @@ let reply_to ~(now_millis : int) ~(store : Store.t) ~(config : Config.t)
       match Config.get config param with
       | Some (name, v) -> Array [ Bulk_string (Some name); Bulk_string (Some v) ]
       | None -> Array [])
+  | Ok (Keys _pattern) ->
+      (* Only the "*" pattern is required by the stage; we return every live key
+         regardless of pattern. Real glob matching is a known gap. *)
+      Array
+        (List.map (fun k -> Bulk_string (Some k)) (Store.keys store ~now_millis))
   | Error msg -> Simple_error ("ERR " ^ msg)
 
 (* Parse RESP values straight from the connection's buffered reader and reply to

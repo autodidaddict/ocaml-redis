@@ -17,3 +17,17 @@ let get (t : t) ~(now_millis : int) (key : string) : string option =
     None
   | Some { value; _ } -> Some value
   | None -> None
+
+let keys (t : t) ~(now_millis : int) : string list =
+  (* Gather live keys; collect the expired ones and remove them afterwards
+     rather than mutating the table mid-iteration (same lazy-expiry policy as
+     [get]). *)
+  let live = ref [] and expired = ref [] in
+  Hashtbl.iter
+    (fun key { expires_at_millis; _ } ->
+      match expires_at_millis with
+      | Some exp when exp <= now_millis -> expired := key :: !expired
+      | _ -> live := key :: !live)
+    t;
+  List.iter (Hashtbl.remove t) !expired;
+  !live

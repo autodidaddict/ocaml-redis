@@ -35,6 +35,7 @@ type t =
   | Get of string
   | Set of set_options
   | Config_get of string  (** CONFIG GET <parameter> *)
+  | Keys of string  (** KEYS <pattern> *)
 
 (* A positive integer expiry argument, or None if it isn't one. Redis rejects
    zero and negatives, so we enforce that here at the wire boundary. *)
@@ -110,5 +111,7 @@ let of_value (value : Value.t) : (t, string) result =
         when String.uppercase_ascii sub = "GET" ->
           Ok (Config_get param)
       | "CONFIG", _ -> Error "CONFIG only supports GET <parameter>"
+      | "KEYS", [ Bulk_string (Some pattern) ] -> Ok (Keys pattern)
+      | "KEYS", _ -> Error "KEYS expects one pattern argument"
       | other, _ -> Error (Printf.sprintf "unknown command '%s'" other))
   | _ -> Error "expected a non-empty array of bulk strings"

@@ -1,6 +1,8 @@
 type t = { dir : string; dbfilename : string }
 
 let create ~dir ~dbfilename = { dir; dbfilename }
+let dir t = t.dir
+let dbfilename t = t.dbfilename
 
 (* Redis treats configuration parameter names case-insensitively, so normalise
    before matching. *)

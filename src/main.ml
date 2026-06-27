@@ -2,6 +2,24 @@ open Eio.Std
 
 let addr = `Tcp (Eio.Net.Ipaddr.V4.loopback, 6379)
 
+(* Populate [store] from the RDB file named by the configuration, if it exists.
+   The decode is pure; this is the I/O edge — read the bytes through the
+   filesystem capability and fold the entries in. A missing file is not an error:
+   the database is simply empty. We use the [fs] capability rather than [cwd]
+   because --dir is an absolute path the cwd sandbox would reject. Already-expired
+   keys need no special handling — the store's lazy expiry drops them at read
+   time. *)
+let load_rdb ~fs ~(config : Config.t) (store : Store.t) : unit =
+  let path =
+    Eio.Path.(fs / Filename.concat (Config.dir config) (Config.dbfilename config))
+  in
+  match Eio.Path.kind ~follow:true path with
+  | `Not_found -> ()
+  | _ ->
+    Eio.Path.load path |> Rdb.of_string
+    |> List.iter (fun (e : Rdb.entry) ->
+           Store.set store ?expires_at_millis:e.expires_at_millis e.key e.value)
+
 (* Start the server and block until SIGTERM/SIGINT. [config] is the startup
    configuration capability; [env] is the Eio environment. *)
 let serve ~config env =
@@ -11,6 +29,7 @@ let serve ~config env =
   in
   let clock = Eio.Stdenv.clock env in
   let store = Store.create () in
+  load_rdb ~fs:(Eio.Stdenv.fs env) ~config store;
   (* See https://kevinhoffman.blog/posts/debug-io-uring-codecrafters-analysis/ for
      background on the eio setup and signal-safe shutdown.
 

@@ -68,6 +68,7 @@ let command_equal (a : Command.t) (b : Command.t) : bool =
      functions, or abstract types), so polymorphic [=] is correct here. *)
   | Command.Set x, Command.Set y -> x = y
   | Command.Config_get x, Command.Config_get y -> String.equal x y
+  | Command.Keys x, Command.Keys y -> String.equal x y
   | _ -> false
 
 let existence_to_string : Command.existence -> string = function
@@ -96,6 +97,7 @@ let command_pp (fmt : Format.formatter) (c : Command.t) : unit =
       (existence_to_string existence)
       get (expiry_to_string expiry)
   | Command.Config_get param -> Format.fprintf fmt "Config_get %S" param
+  | Command.Keys pattern -> Format.fprintf fmt "Keys %S" pattern
 
 let command : Command.t Alcotest.testable =
   Alcotest.testable command_pp command_equal

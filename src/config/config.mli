@@ -10,6 +10,12 @@ type t
 val create : dir:string -> dbfilename:string -> t
 (** [create ~dir ~dbfilename] is the configuration parsed from the command line. *)
 
+val dir : t -> string
+(** [dir t] is the [--dir] the server was started with. *)
+
+val dbfilename : t -> string
+(** [dbfilename t] is the [--dbfilename] the server was started with. *)
+
 val get : t -> string -> (string * string) option
 (** [get t name] looks up the configuration parameter [name] case-insensitively
     and returns its [(canonical_name, value)] pair, or [None] if there is no such

@@ -37,6 +37,22 @@ let test_expiry_is_a_lazy_drop () =
   ignore (Store.get s ~now_millis:150 "k");
   Alcotest.check value "actually removed" None (Store.get s ~now_millis:0 "k")
 
+let test_keys_lists_live_keys () =
+  let s = Store.create () in
+  Store.set s "a" "1";
+  Store.set s "b" "2";
+  Alcotest.(check (slist string String.compare))
+    "both keys" [ "a"; "b" ]
+    (Store.keys s ~now_millis:0)
+
+let test_keys_excludes_expired () =
+  let s = Store.create () in
+  Store.set s "live" "1";
+  Store.set s ~expires_at_millis:100 "dead" "2";
+  Alcotest.(check (slist string String.compare))
+    "only the live key" [ "live" ]
+    (Store.keys s ~now_millis:150)
+
 let () =
   Alcotest.run "store"
     [ ( "get/set"
@@ -48,5 +64,9 @@ let () =
             test_gone_at_or_after_deadline
         ; Alcotest.test_case "expiry is a lazy drop" `Quick
             test_expiry_is_a_lazy_drop
+        ; Alcotest.test_case "keys lists live keys" `Quick
+            test_keys_lists_live_keys
+        ; Alcotest.test_case "keys excludes expired" `Quick
+            test_keys_excludes_expired
         ] )
     ]
